@@ -5,6 +5,7 @@ import (
      "fmt"
     "gopkg.in/telegram-bot-api.v4"
     "github.com/influxdata/influxdb/client/v2"
+     "encoding/json"
 )
 
 
@@ -24,13 +25,23 @@ func getTemperatures() string {
 	if err != nil {
     	log.Fatal("Error: ",err)
 	}
-	for i,row := range res[0].Series[0].Values {
-	    name := row[1]
-	    val := row[2]
-	    log.Printf("%i %s %s",i,name,val)  
-	}
 
-	return "broufffffff"
+	var temperatures = make(map[string]string)
+	for row := range res[0].Series[0].Values {
+	    name := res[0].Series[0].Values[row][1].(string)
+	    val := res[0].Series[0].Values[row][2].(json.Number).String()
+	    _,ok := temperatures[name] //vérifie la présence de la pièce dans la map
+	    if !ok {
+	    	temperatures[name] = val
+	    }
+	}
+	var result = "``` Les températures des pièces sont:"
+	for room := range temperatures {
+		result = fmt.Sprintf("%s \n %s: %s°C",result,room,temperatures[room])
+	}
+	result = fmt.Sprintf("%s```",result)
+
+	return result
 }
 
 
@@ -38,8 +49,8 @@ func getTemperatures() string {
 func msgAnalysis(input string) string {
     output := "Désolé, je n'ai pas reconnu la commande"
     switch input {
-    	case "/start": output = "Bonjour *Maître*, <b>que</b> puis-je pour vous aujourd'hui?"
-    	case "/help": output = "Je m'appelle goule, et je sers la maison de mon Maître"
+    	case "/start": output = "Bonjour *Maître*, que puis-je pour vous aujourd'hui?"
+    	case "/help": output = "Je m'appelle *Goule*, et je sers la maison de mon *Maître*"
     	case "/temp","/temperature","/temperatures","/température": output = getTemperatures()
     	default: output = "Désolé, je n'ai pas reconnu la commande"
     }
