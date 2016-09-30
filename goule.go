@@ -10,18 +10,17 @@ import (
 
 
 const (
-    MyDB = "tempDB"
     username = "grafana"
     password = "paint"
     addr = "http://obelix:8086"
 )
 
 
-//Récupère les dernières valeurs
+//Récupère les dernières valeurs de température
 func getTemperatures() string {
 	
-	q := fmt.Sprintf("SELECT * FROM temperature LIMIT 15")
-	res, err := queryDB(q)
+	q := fmt.Sprintf("SELECT * FROM temperature ORDER BY time DESC LIMIT 15")
+	res, err := queryDB(q,"tempDB")
 	if err != nil {
     	log.Fatal("Error: ",err)
 	}
@@ -39,9 +38,24 @@ func getTemperatures() string {
 	for room := range temperatures {
 		result = fmt.Sprintf("%s \n %s: %s°C",result,room,temperatures[room])
 	}
-	result = fmt.Sprintf("%s```",result)
+	result = fmt.Sprintf("%s ```",result)
 
 	return result
+}
+
+func getConsoElectrique() string {
+
+	q := fmt.Sprintf("SELECT * FROM energy ORDER BY time DESC LIMIT 1")
+	res, err := queryDB(q,"electricity")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+
+	day_energy := res[0].Series[0].Values[0][1].(json.Number).String()
+	instant_energy := res[0].Series[0].Values[0][2].(json.Number).String()
+	
+	return fmt.Sprintf("``` Actuellement la consommation instantanée est de %sW et le cumul est de %skW ```",instant_energy,day_energy)
+
 }
 
 
@@ -49,17 +63,18 @@ func getTemperatures() string {
 func msgAnalysis(input string) string {
     output := "Désolé, je n'ai pas reconnu la commande"
     switch input {
-    	case "/start": output = "Bonjour *Maître*, que puis-je pour vous aujourd'hui?"
-    	case "/help": output = "Je m'appelle *Goule*, et je sers la maison de mon *Maître*"
-    	case "/temp","/temperature","/temperatures","/température": output = getTemperatures()
-    	default: output = "Désolé, je n'ai pas reconnu la commande"
+    	case "/start": output = "``` Bonjour Maître, que puis-je pour vous aujourd'hui?```"
+    	case "/help": output = "``` Je m'appelle Goule, et je sers la maison de mon Maître```"
+    	case "/temp": output = getTemperatures()
+    	case "/conso": output = getConsoElectrique()
+    	default: output = "``` Désolé, je n'ai pas reconnu la commande```"
     }
     return output
 }
 
 
 // queryDB convenience function to query the database
-func queryDB(cmd string) (res []client.Result, err error) {
+func queryDB(cmd string, MyDB string) (res []client.Result, err error) {
     
 	log.Printf("Connection à influxDB")
 	clnt, err := client.NewHTTPClient(client.HTTPConfig{
