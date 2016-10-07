@@ -63,7 +63,7 @@ func getConsoElectrique() string {
 //Renvoie les métriques autour du trafic internet @home
 func getInternet() string {
 
-	q := fmt.Sprintf("SELECT mean(\"rx\")/8/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 3m")
+	q := fmt.Sprintf("SELECT mean(\"rx\")/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 5m")
 	res, err := queryDB(q,"traffic")
 	if err != nil {
     	log.Fatal("Error: ",err)
@@ -74,7 +74,7 @@ func getInternet() string {
 	}
 	mean_rx = math.Floor(mean_rx)
 
-	q2 := fmt.Sprintf("SELECT mean(\"tx\")/8/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 3m")
+	q2 := fmt.Sprintf("SELECT mean(\"tx\")/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 5m")
 	res2, err := queryDB(q2,"traffic")
 	if err != nil {
     	log.Fatal("Error: ",err)
@@ -85,7 +85,18 @@ func getInternet() string {
 	}
 	mean_tx = math.Floor(mean_tx)
 
-	var result = fmt.Sprintf("``` Le trafic entrant est de %vKo/s et de %vKo/s en sortie (en moyenne sur 3min) ```",mean_rx,mean_tx)
+	q3 := fmt.Sprintf("SELECT mean(\"value\") FROM ping where \"site\" = 'google' and time > now() - 5m")
+	res3, err := queryDB(q3,"uptime")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	uptime, err := res3[0].Series[0].Values[0][1].(json.Number).Float64()
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	uptime = math.Floor(uptime)
+
+	var result = fmt.Sprintf("``` Sur les 5 dernières minutes, Le trafic entrant moyen est de %vKb/s et de %vKb/s en sortie. La moyenne du ping vers google est %vms. ```",mean_rx,mean_tx,uptime)
 	
 	return result
 }
