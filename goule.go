@@ -6,6 +6,7 @@ import (
     "gopkg.in/telegram-bot-api.v4"
     "github.com/influxdata/influxdb/client/v2"
      "encoding/json"
+     "math"
 )
 
 
@@ -43,6 +44,7 @@ func getTemperatures() string {
 	return result
 }
 
+//Renvoie la consommation électrique
 func getConsoElectrique() string {
 
 	q := fmt.Sprintf("SELECT * FROM energy ORDER BY time DESC LIMIT 1")
@@ -58,15 +60,46 @@ func getConsoElectrique() string {
 
 }
 
+//Renvoie les métriques autour du trafic internet @home
+func getInternet() string {
+
+	q := fmt.Sprintf("SELECT mean(\"rx\")/8/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 3m")
+	res, err := queryDB(q,"traffic")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	mean_rx, err := res[0].Series[0].Values[0][1].(json.Number).Float64()
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	mean_rx = math.Floor(mean_rx)
+
+	q2 := fmt.Sprintf("SELECT mean(\"tx\")/8/1000 FROM traffic where \"interface\" = 'pppoe-wan6' and time > now() - 3m")
+	res2, err := queryDB(q2,"traffic")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	mean_tx, err := res2[0].Series[0].Values[0][1].(json.Number).Float64()
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+	mean_tx = math.Floor(mean_tx)
+
+	var result = fmt.Sprintf("``` Le trafic entrant est de %vKo/s et de %vKo/s en sortie (en moyenne sur 3min) ```",mean_rx,mean_tx)
+	
+	return result
+}
+
 
 //Analyse le message
 func msgAnalysis(input string) string {
     output := "Désolé, je n'ai pas reconnu la commande"
     switch input {
-    	case "/start": output = "``` Bonjour Maître, que puis-je pour vous aujourd'hui?```"
-    	case "/help": output = "``` Je m'appelle Goule, et je sers la maison de mon Maître```"
+    	case "/start": output = "``` Bonjour Maître, que puis-je pour vous aujourd'hui? ```"
+    	case "/help": output = "``` Je m'appelle Goule, et je sers la maison de mon Maître ```"
     	case "/temp": output = getTemperatures()
     	case "/conso": output = getConsoElectrique()
+    	case "/internet": output = getInternet()
     	default: output = "``` Désolé, je n'ai pas reconnu la commande```"
     }
     return output
@@ -105,9 +138,6 @@ func queryDB(cmd string, MyDB string) (res []client.Result, err error) {
 
 
 func main() {
-
-
-
     bot, err := tgbotapi.NewBotAPI("266659220:AAGB3cokOQu6ZswK9xt6EIhnPy7Gs1CpoWs")
     if err != nil {
         log.Panic(err)
