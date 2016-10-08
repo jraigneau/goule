@@ -205,14 +205,14 @@ func main() {
             continue
         }
         if update.Message.From.UserName == master { //vérifie username
-            log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+            //log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
             input := update.Message.Text
             output := msgAnalysis(input)
         	msg := tgbotapi.NewMessage(update.Message.Chat.ID, output)
         	msg.ParseMode = "Markdown" 
         	bot.Send(msg)
         } else {
-        	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+        	//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
         	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Désolé je n'obéis qu'à mon Maître")
         	bot.Send(msg)
         }
