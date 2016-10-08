@@ -35,11 +35,21 @@ func getTemperatures() string {
 	    	temperatures[name] = val
 	    }
 	}
-	var result = "``` Les températures des pièces sont:"
+	var result = "Les températures des pièces sont:"
 	for room := range temperatures {
-		result = fmt.Sprintf("%s \n %s: %s°C",result,room,temperatures[room])
+		result = fmt.Sprintf("%s\n- %s: *%s°C*",result,room,temperatures[room])
 	}
-	result = fmt.Sprintf("%s ```",result)
+
+
+	q1 := fmt.Sprintf("select value from hygrometrie order by time desc limit 1")
+	res1, err := queryDB(q1,"hygroDB")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+
+	hygroSDB := res1[0].Series[0].Values[0][1].(json.Number).String()
+
+	result = fmt.Sprintf("%s\net le degré d'humidité dans le SdB est de *%v%%*.",result,hygroSDB)
 
 	return result
 }
@@ -56,7 +66,32 @@ func getConsoElectrique() string {
 	day_energy := res[0].Series[0].Values[0][1].(json.Number).String()
 	instant_energy := res[0].Series[0].Values[0][2].(json.Number).String()
 	
-	return fmt.Sprintf("``` Actuellement la consommation instantanée est de %sW et le cumul est de %skW ```",instant_energy,day_energy)
+	return fmt.Sprintf("Actuellement la consommation instantanée est de *%sW* et le cumul est de *%skW*.",instant_energy,day_energy)
+
+}
+
+//Renvoie le traffic routier
+func getTraffic() string {
+
+	q := fmt.Sprintf("SELECT trafficDelayInSeconds,travelTimeInSeconds FROM traffic where \"name\"='julien' ORDER BY time DESC LIMIT 1")
+	res, err := queryDB(q,"trafficy")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+
+	trafficDelayInSecondsJR := res[0].Series[0].Values[0][1].(json.Number).String()
+	travelTimeInSecondsJR := res[0].Series[0].Values[0][2].(json.Number).String()
+
+	q1 := fmt.Sprintf("SELECT trafficDelayInSeconds,travelTimeInSeconds FROM traffic where \"name\"='laurence' ORDER BY time DESC LIMIT 1")
+	res1, err := queryDB(q1,"trafficy")
+	if err != nil {
+    	log.Fatal("Error: ",err)
+	}
+
+	trafficDelayInSecondsLR := res1[0].Series[0].Values[0][1].(json.Number).String()
+	travelTimeInSecondsLR := res1[0].Series[0].Values[0][2].(json.Number).String()
+	
+	return fmt.Sprintf("Actuellement il faut *%vmin* pour aller au PMU (*%vmin* de bouchon) et *%vmin* pour aller chez Aviva (*%vmin* de bouchon).",travelTimeInSecondsJR,trafficDelayInSecondsJR,travelTimeInSecondsLR,trafficDelayInSecondsLR)
 
 }
 
@@ -96,7 +131,7 @@ func getInternet() string {
 	}
 	uptime = math.Floor(uptime)
 
-	var result = fmt.Sprintf("``` Sur les 5 dernières minutes, Le trafic entrant moyen est de %vKb/s et de %vKb/s en sortie. La moyenne du ping vers google est %vms. ```",mean_rx,mean_tx,uptime)
+	var result = fmt.Sprintf("Sur les 5 dernières minutes, Le trafic entrant moyen est de *%vKb/s* et de *%vKb/s* en sortie. La moyenne du ping vers google est *%vms*.",mean_rx,mean_tx,uptime)
 	
 	return result
 }
@@ -106,12 +141,13 @@ func getInternet() string {
 func msgAnalysis(input string) string {
     output := "Désolé, je n'ai pas reconnu la commande"
     switch input {
-    	case "/start": output = "``` Bonjour Maître, que puis-je pour vous aujourd'hui? ```"
-    	case "/help": output = "``` Je m'appelle Goule, et je sers la maison de mon Maître ```"
+    	case "/start": output = "Bonjour Maître, que puis-je pour vous aujourd'hui?"
+    	case "/help": output = "Je m'appelle Goule, et je sers la maison de mon Maître"
     	case "/temp": output = getTemperatures()
     	case "/conso": output = getConsoElectrique()
     	case "/internet": output = getInternet()
-    	default: output = "``` Désolé, je n'ai pas reconnu la commande```"
+    	case "/traffic": output = getTraffic()
+    	default: output = "Désolé, je n'ai pas reconnu la commande"
     }
     return output
 }
