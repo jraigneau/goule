@@ -6,8 +6,10 @@
                                        
 
 
-####Usage
+#### Usage
 
-####Config
+Plus d'info sur [www.zeneffy.fr](http://www.zeneffy.fr/2016/10/go-bot-domotique/)
 
-####Example
+#### Important
+
+Goule a été remplacé par [naBOT](https://github.com/jraigneau/nabot)
